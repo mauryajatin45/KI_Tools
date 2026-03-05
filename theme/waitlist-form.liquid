@@ -1,0 +1,155 @@
+{% comment %}
+  waitlist-form.liquid
+  ─────────────────────────────────────────────────────────────────────────────
+  Back-in-Stock Waitlist Form for the Halo Theme.
+
+  USAGE: Paste this snippet inside main-product.liquid (or the relevant
+  product form snippet), wrapped in the {% unless product.available %} block.
+
+  Example placement in main-product.liquid:
+    {% unless product.available %}
+      {% render 'waitlist-form' %}
+    {% endunless %}
+  ─────────────────────────────────────────────────────────────────────────────
+{% endcomment %}
+
+<div id="waitlist-container" class="waitlist-form-wrapper">
+  <p class="waitlist-heading">
+    Leave Your Email And We Will Notify As Soon As The Product / Variant Is Back In Stock
+  </p>
+
+  <form
+    id="waitlist-form"
+    class="waitlist-form"
+    data-product-id="{{ product.id }}"
+    data-product-title="{{ product.title | escape }}"
+    novalidate
+  >
+    <div class="waitlist-input-group">
+      <input
+        type="email"
+        id="waitlist-email"
+        name="email"
+        class="waitlist-email-input"
+        placeholder="Enter your email address"
+        autocomplete="email"
+        required
+        aria-label="Email address for restock notification"
+      />
+      <button type="submit" class="waitlist-submit-btn" id="waitlist-submit">
+        <span class="waitlist-btn-text">NOTIFY ME</span>
+        <span class="waitlist-btn-loading" aria-hidden="true" style="display:none;">
+          &#9679;&#9679;&#9679;
+        </span>
+      </button>
+    </div>
+
+    <p id="waitlist-message" class="waitlist-message" role="alert" aria-live="polite"></p>
+  </form>
+</div>
+
+{% comment %} ── Scoped CSS ── {% endcomment %}
+<style>
+  .waitlist-form-wrapper {
+    margin: 20px 0;
+    padding: 10px 0;
+    font-family: inherit;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .waitlist-heading {
+    margin: 0 0 10px 0;
+    font-size: 15px;
+    color: #4a4a4a;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+
+  .waitlist-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .waitlist-input-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: nowrap;
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .waitlist-email-input {
+    flex: 1 1 auto;
+    width: 100%;
+    padding: 14px 16px;
+    border: 1px solid #d1d1d1;
+    border-radius: 0;
+    font-size: 14px;
+    color: #333;
+    outline: none;
+    background: transparent;
+    transition: border-color 0.2s;
+  }
+  
+  .waitlist-email-input::placeholder {
+    color: #999;
+  }
+
+  .waitlist-email-input:focus {
+    border-color: #000;
+  }
+
+  .waitlist-submit-btn {
+    flex: 0 0 auto;
+    padding: 14px 30px;
+    background: transparent;
+    color: #1a1a1a;
+    border: 2px solid #1a1a1a;
+    border-radius: 0;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .waitlist-submit-btn:hover {
+    background: #1a1a1a;
+    color: #ffffff;
+  }
+
+  .waitlist-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  /* Mobile responsiveness */
+  @media screen and (max-width: 600px) {
+    .waitlist-input-group {
+      flex-direction: column;
+      gap: 10px;
+    }
+    .waitlist-submit-btn {
+      width: 100%;
+    }
+  }
+
+  .waitlist-message {
+    margin: 0;
+    font-size: 13px;
+    min-height: 18px;
+  }
+
+  .waitlist-message.success { color: #2e7d32; }
+  .waitlist-message.error   { color: #c62828; }
+</style>
+
+{% comment %} ── Load the JS ── {% endcomment %}
+<script src="{{ 'waitlist-form.js' | asset_url }}" defer="defer"></script>
