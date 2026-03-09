@@ -16,6 +16,8 @@ import {
   InlineStack,
   BlockStack,
   Divider,
+  Popover,
+  ActionList,
 } from "@shopify/polaris";
 import {
   ExportIcon,
@@ -35,6 +37,8 @@ export default function WaitlistPage() {
   const [error, setError]             = useState(null);
   const [successMsg, setSuccessMsg]   = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [exportPopoverActive, setExportPopoverActive] = useState(false);
+  const toggleExportPopover = useCallback(() => setExportPopoverActive((active) => !active), []);
 
   // ── Fetch all waitlists ────────────────────────────────────────────────────
   const fetchWaitlist = useCallback(async () => {
@@ -63,12 +67,13 @@ export default function WaitlistPage() {
   }, [fetchWaitlist]);
 
   // ── Export CSV ─────────────────────────────────────────────────────────────
-  const handleExportCSV = useCallback(async () => {
+  const handleExportCSV = useCallback(async (filter = "waiting") => {
+    setExportPopoverActive(false);
     setActionLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`${API_BASE}/api/waitlist/export-csv`);
+      const res = await fetch(`${API_BASE}/api/waitlist/export-csv?filter=${filter}`);
 
       if (!res.ok) {
         throw new Error("Export failed. Please try again.");
@@ -79,7 +84,7 @@ export default function WaitlistPage() {
       const url       = URL.createObjectURL(blob);
       const a         = document.createElement("a");
       a.href          = url;
-      a.download      = `waitlist-all.csv`;
+      a.download      = `waitlist-${filter}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -92,38 +97,6 @@ export default function WaitlistPage() {
       setActionLoading(false);
     }
   }, []);
-
-  // ── Mark all as sent ───────────────────────────────────────────────────────
-  const handleMarkSent = useCallback(async () => {
-    const confirmed = window.confirm(
-      "Mark ALL waiting subscribers across ALL products as notified? This cannot be undone."
-    );
-    if (!confirmed) return;
-
-    setActionLoading(true);
-    setError(null);
-
-    try {
-      const res  = await fetch(`${API_BASE}/api/waitlist/mark-sent`, {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({}), // empty body means ALL products
-      });
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to mark as sent.");
-      }
-
-      setSuccessMsg(`✅ ${data.updated} subscriber(s) marked as notified.`);
-      // Refresh table
-      await fetchWaitlist();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setActionLoading(false);
-    }
-  }, [fetchWaitlist]);
 
   // ── Badge colour per status ────────────────────────────────────────────────
   function statusBadge(status) {
@@ -217,26 +190,37 @@ export default function WaitlistPage() {
 
                 {/* Action buttons */}
                 <InlineStack gap="300">
-                  <ButtonGroup>
-                    <Button
-                      icon={ExportIcon}
-                      onClick={handleExportCSV}
-                      loading={actionLoading}
-                      disabled={actionLoading || waitingCount === 0}
-                    >
-                      Export Waiting List (CSV)
-                    </Button>
-                    <Button
-                      icon={CheckCircleIcon}
-                      tone="success"
-                      variant="primary"
-                      onClick={handleMarkSent}
-                      loading={actionLoading}
-                      disabled={actionLoading || waitingCount === 0}
-                    >
-                      Mark All as Notified
-                    </Button>
-                  </ButtonGroup>
+                  <Popover
+                    active={exportPopoverActive}
+                    activator={
+                      <Button
+                        icon={ExportIcon}
+                        onClick={toggleExportPopover}
+                        loading={actionLoading}
+                        disabled={actionLoading || waitlist.length === 0}
+                      >
+                        Export CSV...
+                      </Button>
+                    }
+                    autofocusTarget="first-node"
+                    onClose={toggleExportPopover}
+                  >
+                    <ActionList
+                      actionRole="menuitem"
+                      items={[
+                        {
+                          content: "Export Waiting List",
+                          disabled: waitingCount === 0,
+                          onAction: () => handleExportCSV("waiting"),
+                        },
+                        {
+                          content: "Export All Subscribers",
+                          disabled: waitlist.length === 0,
+                          onAction: () => handleExportCSV("all"),
+                        },
+                      ]}
+                    />
+                  </Popover>
                 </InlineStack>
 
                 {waitingCount === 0 && waitlist.length > 0 && (

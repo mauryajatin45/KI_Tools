@@ -38,27 +38,31 @@ router.get("/waitlists", async (req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
-// GET /api/waitlist/export-csv?product_id=<id> (optional)
-// Streams a CSV file containing all "waiting" subscribers.
+// GET /api/waitlist/export-csv?product_id=<id>&filter=all|waiting
+// Streams a CSV file containing subscribers (filtered).
 // ---------------------------------------------------------------------------
 router.get("/waitlist/export-csv", async (req, res, next) => {
   try {
-    const { product_id } = req.query;
+    const { product_id, filter } = req.query;
 
-    const entries = product_id 
+    let entries = product_id 
       ? await getWaitlist(product_id)
       : await getAllWaitlists();
-    const waiting = entries.filter((e) => e.status === "waiting");
+      
+    if (filter !== "all") {
+      entries = entries.filter((e) => e.status === "waiting");
+    }
 
     // Build CSV
-    const csvHeader = "Email,Product Title,Date Subscribed,Status\n";
-    const csvRows = waiting
+    const csvHeader = "Email,Product Title,Date Subscribed,Status,Date Notified\n";
+    const csvRows = entries
       .map((e) =>
         [
           `"${e.email}"`,
           `"${(e.product_title || "").replace(/"/g, '""')}"`,
           `"${e.date}"`,
           `"${e.status}"`,
+          `"${e.notified_date || ""}"`,
         ].join(",")
       )
       .join("\n");
@@ -66,8 +70,8 @@ router.get("/waitlist/export-csv", async (req, res, next) => {
     const csv = csvHeader + csvRows;
     const dateStr = new Date().toISOString().split("T")[0];
     const filename = product_id 
-      ? `waitlist-${product_id}-${dateStr}.csv`
-      : `waitlist-all-${dateStr}.csv`;
+      ? `waitlist-${product_id}-${filter === 'all' ? 'all' : 'waiting'}-${dateStr}.csv`
+      : `waitlist-${filter === 'all' ? 'all' : 'waiting'}-${dateStr}.csv`;
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

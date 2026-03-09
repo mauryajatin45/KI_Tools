@@ -54,8 +54,9 @@ router.post("/subscribe", async (req, res, next) => {
     const entries = await getWaitlist(product_id);
 
     // --- Prevent duplicate subscriptions ---
+    // User is only a duplicate if they have an active "waiting" status.
     const alreadySubscribed = entries.some(
-      (e) => e.email.toLowerCase() === normalizedEmail
+      (e) => e.email.toLowerCase() === normalizedEmail && e.status === "waiting"
     );
     if (alreadySubscribed) {
       return res.status(200).json({
