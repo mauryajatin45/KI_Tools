@@ -34,6 +34,7 @@ export default function WaitlistPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError]             = useState(null);
   const [successMsg, setSuccessMsg]   = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // ── Fetch all waitlists ────────────────────────────────────────────────────
   const fetchWaitlist = useCallback(async () => {
@@ -131,8 +132,16 @@ export default function WaitlistPage() {
     return <Badge tone="attention">Waiting</Badge>;
   }
 
+  // ── Filter Data ────────────────────────────────────────────────────────────
+  const filteredWaitlist = waitlist.filter((e) => {
+    const q = searchQuery.toLowerCase();
+    const matchesEmail = e.email.toLowerCase().includes(q);
+    const matchesProduct = e.product_title && e.product_title.toLowerCase().includes(q);
+    return matchesEmail || matchesProduct;
+  });
+
   // ── DataTable rows ─────────────────────────────────────────────────────────
-  const rows = waitlist.map((entry, i) => [
+  const rows = filteredWaitlist.map((entry, i) => [
     i + 1,
     entry.product_title || "—",
     entry.email,
@@ -142,7 +151,7 @@ export default function WaitlistPage() {
   ]);
 
   const waitingCount  = waitlist.filter((e) => e.status === "waiting").length;
-  const notifiedCount = waitlist.filter((e) => e.status === "notified").length;
+  const notifiedCount = waitlist.filter((e) => e.status === "notified" || e.status === "failed").length;
 
   return (
     <Page
@@ -232,10 +241,29 @@ export default function WaitlistPage() {
 
                 {waitingCount === 0 && waitlist.length > 0 && (
                   <Banner tone="info">
-                    <p>All subscribers have already been notified.</p>
+                    <p>All subscribers have already been notified. The system is 100% automated.</p>
                   </Banner>
                 )}
               </BlockStack>
+            </Card>
+          </Layout.Section>
+        )}
+
+        {/* ── Filter ── */}
+        {!loading && waitlist.length > 0 && (
+          <Layout.Section>
+            <Card padding="400">
+              <TextField
+                label="Search Waitlist"
+                labelHidden
+                placeholder="Search by email or product name..."
+                value={searchQuery}
+                onChange={setSearchQuery}
+                clearButton
+                onClearButtonClick={() => setSearchQuery("")}
+                prefix={<SearchIcon />}
+                autoComplete="off"
+              />
             </Card>
           </Layout.Section>
         )}
@@ -288,29 +316,6 @@ export default function WaitlistPage() {
           </Layout.Section>
         )}
 
-        {/* ── SOP hint ── */}
-        {!loading && waitingCount > 0 && (
-          <Layout.Section>
-            <Banner tone="info" title="How to notify customers (SOP)">
-              <BlockStack gap="200">
-                <Text variant="bodySm">
-                  1. Click <strong>Export Waiting List (CSV)</strong> above.
-                </Text>
-                <Text variant="bodySm">
-                  2. Go to <strong>Shopify Admin → Customers → Import</strong> and
-                  tag them <code>restock_alert</code>.
-                </Text>
-                <Text variant="bodySm">
-                  3. Open <strong>Shopify Email</strong>, send the "Back in Stock"
-                  template to customers with the <code>restock_alert</code> tag.
-                </Text>
-                <Text variant="bodySm">
-                  4. Return here and click <strong>Mark All as Notified</strong>.
-                </Text>
-              </BlockStack>
-            </Banner>
-          </Layout.Section>
-        )}
       </Layout>
     </Page>
   );

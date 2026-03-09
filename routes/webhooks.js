@@ -48,7 +48,7 @@ router.post("/inventory", async (req, res) => {
 
     // 1. We need the actual Product ID. The webhook gives us inventory_item_id.
     // Let's use the Admin API to get the Product ID linked to this inventory item.
-    const { getProductIdFromInventoryItem, getWaitlist, updateWaitlist } = require("../lib/shopify");
+    const { getProductIdFromInventoryItem, getWaitlist, updateWaitlist, getProductDetails } = require("../lib/shopify");
     const productId = await getProductIdFromInventoryItem(inventory_item_id);
 
     if (!productId) {
@@ -75,6 +75,40 @@ router.post("/inventory", async (req, res) => {
     const { Resend } = require('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    // Fetch Rich Product Info for Email Template
+    const productDetails = await getProductDetails(productId);
+    const storeDomain = process.env.SHOPIFY_STORE_DOMAIN;
+    const productUrl = productDetails 
+      ? `https://${storeDomain}/products/${productDetails.handle}`
+      : `https://${storeDomain}`;
+
+    const generateHtmlEmail = (subscriber) => `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f9f9f9; padding: 20px; text-align: center; margin: 0; }
+          .container { max-width: 600px; margin: 0 auto; background: #ffffff; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+          h1 { color: #111111; font-size: 26px; margin-bottom: 10px; }
+          p { color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px; }
+          .product-img { max-width: 100%; max-height: 350px; border-radius: 8px; margin: 0 auto 25px; display: block; object-fit: cover; }
+          .btn { display: inline-block; background-color: #000000; color: #ffffff !important; text-decoration: none; padding: 16px 32px; border-radius: 6px; font-weight: bold; font-size: 16px; margin-top: 10px; }
+          .footer { margin-top: 40px; font-size: 13px; color: #999999; border-top: 1px solid #eeeeee; padding-top: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Good news! It's back.</h1>
+          <p>You asked us to notify you when <strong>${subscriber.product_title}</strong> is restocked.</p>
+          ${productDetails && productDetails.imageUrl ? `<img src="${productDetails.imageUrl}" alt="${subscriber.product_title}" class="product-img" />` : ''}
+          <p>It is now available for purchase, but hurry before it sells out again!</p>
+          <a href="${productUrl}" class="btn">Shop Now</a>
+          <div class="footer">You received this email because you joined the waitlist for this product on our store.</div>
+        </div>
+      </body>
+      </html>
+    `;
+
     for (let subscriber of waitingSubscribers) {
       if (process.env.RESEND_API_KEY) {
         try {
@@ -82,7 +116,7 @@ router.post("/inventory", async (req, res) => {
             from: 'Restock Notifications <notifications@project.terzettoo.com>', // Using your verified domain
             to: subscriber.email,
             subject: `Good news! ${subscriber.product_title} is back in stock`,
-            html: `<p>Hi there,</p><p>You asked us to notify you when <strong>${subscriber.product_title}</strong> is back in stock.</p><p>Good news – it's available now!</p><p>Visit our store to grab yours before it sells out again.</p>`
+            html: generateHtmlEmail(subscriber)
           });
           
           if (resendResponse.error) {
@@ -91,6 +125,7 @@ router.post("/inventory", async (req, res) => {
           } else {
             console.log(`[EMAIL] Successfully sent to ${subscriber.email}. Resend ID: ${resendResponse.data?.id}`);
             subscriber.status = "notified";
+            subscriber.notified_date = new Date().toISOString().split("T")[0]; // Store the date
           }
         } catch (err) {
           console.error(`[EMAIL CATCH ERROR] Exception while sending to ${subscriber.email}:`, err);
@@ -99,6 +134,7 @@ router.post("/inventory", async (req, res) => {
       } else {
         console.log(`[EMAIL STUB] Would have sent email to ${subscriber.email}, but RESEND_API_KEY is missing.`);
         subscriber.status = "notified"; // Still mark notified in stub mode so they don't get spammed later
+        subscriber.notified_date = new Date().toISOString().split("T")[0]; // Store the date
       }
     }
 
