@@ -127,6 +127,7 @@ export default function WaitlistPage() {
   // ── Badge colour per status ────────────────────────────────────────────────
   function statusBadge(status) {
     if (status === "notified") return <Badge tone="success">Notified</Badge>;
+    if (status === "failed") return <Badge tone="critical">Failed</Badge>;
     return <Badge tone="attention">Waiting</Badge>;
   }
 

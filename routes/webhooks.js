@@ -19,13 +19,13 @@ router.post("/inventory", async (req, res) => {
     const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
 
     if (secret && hmacHeader) {
-      // Re-stringify the body to verify. (Note: if Shopify sends differently ordered keys, 
-      // this weak recreation might fail. The strongest way is capturing the raw buffer in server.js)
-      const bodyString = JSON.stringify(req.body);
+      // Use the raw byte buffer captured in server.js to guarantee the exact byte string
+      // Shopify used to sign the payload. Re-stringifying parsed JSON almost always fails.
+      const rawBodyBuffer = req.rawBody || "";
       
       const generatedHash = crypto
         .createHmac("sha256", secret)
-        .update(bodyString, "utf8")
+        .update(rawBodyBuffer, "utf8")
         .digest("base64");
 
       if (generatedHash !== hmacHeader) {
@@ -78,22 +78,28 @@ router.post("/inventory", async (req, res) => {
     for (let subscriber of waitingSubscribers) {
       if (process.env.RESEND_API_KEY) {
         try {
-          await resend.emails.send({
+          const resendResponse = await resend.emails.send({
             from: 'Restock Notifications <notifications@project.terzettoo.com>', // Using your verified domain
             to: subscriber.email,
             subject: `Good news! ${subscriber.product_title} is back in stock`,
             html: `<p>Hi there,</p><p>You asked us to notify you when <strong>${subscriber.product_title}</strong> is back in stock.</p><p>Good news – it's available now!</p><p>Visit our store to grab yours before it sells out again.</p>`
           });
-          console.log(`[EMAIL] Sent to ${subscriber.email}`);
+          
+          if (resendResponse.error) {
+            console.error(`[EMAIL ERROR] Resend fully rejected message to ${subscriber.email}:`, resendResponse.error);
+            subscriber.status = "failed";
+          } else {
+            console.log(`[EMAIL] Successfully sent to ${subscriber.email}. Resend ID: ${resendResponse.data?.id}`);
+            subscriber.status = "notified";
+          }
         } catch (err) {
-          console.error(`[EMAIL ERROR] Failed to send to ${subscriber.email}`, err);
+          console.error(`[EMAIL CATCH ERROR] Exception while sending to ${subscriber.email}:`, err);
+          subscriber.status = "failed";
         }
       } else {
         console.log(`[EMAIL STUB] Would have sent email to ${subscriber.email}, but RESEND_API_KEY is missing.`);
+        subscriber.status = "notified"; // Still mark notified in stub mode so they don't get spammed later
       }
-
-      // Mark as notified whether it actually sent or was stubbed (to prevent spam loops)
-      subscriber.status = "notified";
     }
 
     // 5. Save the updated waitlist back to Shopify
