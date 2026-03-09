@@ -11,6 +11,7 @@ const path = require("path");
 const subscribeRoutes = require("./routes/subscribe");
 const waitlistRoutes  = require("./routes/waitlist");
 const authRoutes      = require("./routes/auth");
+const webhookRoutes = require("./routes/webhooks");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
