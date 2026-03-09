@@ -66,11 +66,10 @@ router.post("/subscribe", async (req, res, next) => {
       });
     }
 
-    // --- Push new entry ---
     const newEntry = {
       email:         normalizedEmail,
       product_title: product_title || "Unknown Product",
-      date:          new Date().toISOString().split("T")[0], // YYYY-MM-DD
+      date:          new Date().toISOString(), // Store precise timestamp for sorting
       status:        "waiting",
     };
 

@@ -125,7 +125,7 @@ router.post("/inventory", async (req, res) => {
           } else {
             console.log(`[EMAIL] Successfully sent to ${subscriber.email}. Resend ID: ${resendResponse.data?.id}`);
             subscriber.status = "notified";
-            subscriber.notified_date = new Date().toISOString().split("T")[0]; // Store the date
+            subscriber.notified_date = new Date().toISOString(); // Store precise timestamp
           }
         } catch (err) {
           console.error(`[EMAIL CATCH ERROR] Exception while sending to ${subscriber.email}:`, err);
@@ -134,7 +134,7 @@ router.post("/inventory", async (req, res) => {
       } else {
         console.log(`[EMAIL STUB] Would have sent email to ${subscriber.email}, but RESEND_API_KEY is missing.`);
         subscriber.status = "notified"; // Still mark notified in stub mode so they don't get spammed later
-        subscriber.notified_date = new Date().toISOString().split("T")[0]; // Store the date
+        subscriber.notified_date = new Date().toISOString(); // Store precise timestamp
       }
     }
 

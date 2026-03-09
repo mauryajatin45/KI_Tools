@@ -134,13 +134,37 @@ export default function WaitlistPage() {
     }
   });
 
+  // ── Helper: Format Date ────────────────────────────────────────────────────
+  function formatDate(isoString) {
+    if (!isoString) return "—";
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      
+      // If it's an old record with just YYYY-MM-DD
+      if (isoString.length <= 10) return isoString;
+
+      // Format as "Mar 9, 2026, 12:45 PM"
+      return d.toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch {
+      return isoString;
+    }
+  }
+
   // ── DataTable rows ─────────────────────────────────────────────────────────
   const rows = sortedWaitlist.map((entry, i) => [
     i + 1,
     entry.product_title || "—",
     entry.email,
-    entry.date,
-    entry.notified_date || "—",
+    formatDate(entry.date),
+    formatDate(entry.notified_date),
     statusBadge(entry.status),
   ]);
 
