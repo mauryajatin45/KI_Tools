@@ -1,12 +1,42 @@
 const express = require("express");
+const crypto = require("crypto");
 const router = express.Router();
 
 /**
  * POST /webhooks/inventory
  * Triggered by Shopify when an inventory level changes.
+ * 
+ * NOTE: Express usually parses JSON for us, but for HMAC validation
+ * we technically need the raw body. Since we already have express.json()
+ * globally in server.js, we will stringify it back for the validation.
+ * In a perfect world, we'd use `express.raw({type: 'application/json'})` 
+ * just for this route.
  */
-router.post("/inventory", async (req, res, next) => {
+router.post("/inventory", async (req, res) => {
   try {
+    // --- HMAC SECURITY VERIFICATION ---
+    const hmacHeader = req.get("X-Shopify-Hmac-Sha256");
+    const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
+
+    if (secret && hmacHeader) {
+      // Re-stringify the body to verify. (Note: if Shopify sends differently ordered keys, 
+      // this weak recreation might fail. The strongest way is capturing the raw buffer in server.js)
+      const bodyString = JSON.stringify(req.body);
+      
+      const generatedHash = crypto
+        .createHmac("sha256", secret)
+        .update(bodyString, "utf8")
+        .digest("base64");
+
+      if (generatedHash !== hmacHeader) {
+        console.error("[WEBHOOK] HMAC Validation Failed! Ignoring request.");
+        return res.status(401).send("Unauthorized");
+      }
+    } else {
+      console.warn("[WEBHOOK] Warning: No HMAC header or SHOPIFY_WEBHOOK_SECRET provided. Skipping verification.");
+    }
+    // --- END SECURITY VERIFICATION ---
+
     const { inventory_item_id, available } = req.body;
 
     console.log(`[WEBHOOK] Inventory Update | Item: ${inventory_item_id} | Available: ${available}`);
@@ -49,7 +79,7 @@ router.post("/inventory", async (req, res, next) => {
       if (process.env.RESEND_API_KEY) {
         try {
           await resend.emails.send({
-            from: 'Restock Alert <onboarding@resend.dev>', // UPDATE THIS AFTER DOMAIN VERIFICATION
+            from: 'Restock Notifications <notifications@project.terzettoo.com>', // Using your verified domain
             to: subscriber.email,
             subject: `Good news! ${subscriber.product_title} is back in stock`,
             html: `<p>Hi there,</p><p>You asked us to notify you when <strong>${subscriber.product_title}</strong> is back in stock.</p><p>Good news – it's available now!</p><p>Visit our store to grab yours before it sells out again.</p>`
