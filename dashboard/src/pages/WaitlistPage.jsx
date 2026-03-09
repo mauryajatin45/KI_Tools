@@ -18,6 +18,7 @@ import {
   Divider,
   Popover,
   ActionList,
+  Select,
 } from "@shopify/polaris";
 import {
   ExportIcon,
@@ -37,6 +38,7 @@ export default function WaitlistPage() {
   const [error, setError]             = useState(null);
   const [successMsg, setSuccessMsg]   = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortValue, setSortValue]     = useState("newest");
   const [exportPopoverActive, setExportPopoverActive] = useState(false);
   const toggleExportPopover = useCallback(() => setExportPopoverActive((active) => !active), []);
 
@@ -105,7 +107,7 @@ export default function WaitlistPage() {
     return <Badge tone="attention">Waiting</Badge>;
   }
 
-  // ── Filter Data ────────────────────────────────────────────────────────────
+  // ── Filter & Sort Data ───────────────────────────────────────────────────
   const filteredWaitlist = waitlist.filter((e) => {
     const q = searchQuery.toLowerCase();
     const matchesEmail = e.email.toLowerCase().includes(q);
@@ -113,8 +115,27 @@ export default function WaitlistPage() {
     return matchesEmail || matchesProduct;
   });
 
+  const sortedWaitlist = [...filteredWaitlist].sort((a, b) => {
+    switch (sortValue) {
+      case "oldest":
+        return new Date(a.date) - new Date(b.date);
+      case "name_asc":
+        return a.email.localeCompare(b.email);
+      case "name_desc":
+        return b.email.localeCompare(a.email);
+      case "product_asc":
+        return (a.product_title || "").localeCompare(b.product_title || "");
+      case "product_desc":
+        return (b.product_title || "").localeCompare(a.product_title || "");
+      case "newest":
+      default:
+        // By default or 'newest', show the most recently subscribed first
+        return new Date(b.date) - new Date(a.date);
+    }
+  });
+
   // ── DataTable rows ─────────────────────────────────────────────────────────
-  const rows = filteredWaitlist.map((entry, i) => [
+  const rows = sortedWaitlist.map((entry, i) => [
     i + 1,
     entry.product_title || "—",
     entry.email,
@@ -233,21 +254,41 @@ export default function WaitlistPage() {
           </Layout.Section>
         )}
 
-        {/* ── Filter ── */}
+        {/* ── Filter & Sort ── */}
         {!loading && waitlist.length > 0 && (
           <Layout.Section>
             <Card padding="400">
-              <TextField
-                label="Search Waitlist"
-                labelHidden
-                placeholder="Search by email or product name..."
-                value={searchQuery}
-                onChange={setSearchQuery}
-                clearButton
-                onClearButtonClick={() => setSearchQuery("")}
-                prefix={<SearchIcon />}
-                autoComplete="off"
-              />
+              <InlineStack gap="400" wrap={false} blockAlign="center">
+                <Box minWidth="250px" width="100%">
+                  <TextField
+                    label="Search Waitlist"
+                    labelHidden
+                    placeholder="Search by email or product name..."
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    clearButton
+                    onClearButtonClick={() => setSearchQuery("")}
+                    prefix={<SearchIcon />}
+                    autoComplete="off"
+                  />
+                </Box>
+                <Box minWidth="200px">
+                  <Select
+                    label="Sort by"
+                    labelInline
+                    options={[
+                      { label: "Newest First", value: "newest" },
+                      { label: "Oldest First", value: "oldest" },
+                      { label: "Email (A-Z)", value: "name_asc" },
+                      { label: "Email (Z-A)", value: "name_desc" },
+                      { label: "Product (A-Z)", value: "product_asc" },
+                      { label: "Product (Z-A)", value: "product_desc" },
+                    ]}
+                    value={sortValue}
+                    onChange={setSortValue}
+                  />
+                </Box>
+              </InlineStack>
             </Card>
           </Layout.Section>
         )}
@@ -275,8 +316,6 @@ export default function WaitlistPage() {
                 ]}
                 rows={rows}
                 hoverable
-                defaultSortDirection="descending"
-                initialSortColumnIndex={3}
                 stickyHeader
                 increasedTableDensity
               />
