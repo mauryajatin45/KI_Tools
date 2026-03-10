@@ -4,8 +4,7 @@
 #
 
 app = 'ki-tools'
-primary_region = 'bom'
-
+primary_region = "ord"
 [build]
 
 [http_service]
