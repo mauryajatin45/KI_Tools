@@ -1,10 +1,6 @@
-# fly.toml app configuration file generated for ki-tools on 2026-03-09T21:56:38+05:30
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
 app = 'ki-tools'
-primary_region = "ord"
+primary_region = 'ord'
+
 [build]
 
 [http_service]
