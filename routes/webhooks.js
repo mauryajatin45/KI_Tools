@@ -113,7 +113,7 @@ router.post("/inventory", async (req, res) => {
       if (process.env.RESEND_API_KEY) {
         try {
           const resendResponse = await resend.emails.send({
-            from: 'Restock Notifications <notifications@project.terzettoo.com>', // Using your verified domain
+            from: 'Restock Notifications <notifications@kitool.shop>', // Using your verified domain
             to: subscriber.email,
             subject: `Good news! ${subscriber.product_title} is back in stock`,
             html: generateHtmlEmail(subscriber)
